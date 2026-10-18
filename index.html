@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>正字捕手｜常見錯別字落下挑戰</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .serif-font {
+      font-family: 'Noto Serif TC', serif;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-10px) rotate(-1deg); }
+      40% { transform: translateX(10px) rotate(1deg); }
+      60% { transform: translateX(-8px); }
+      80% { transform: translateX(8px); }
+    }
+    .animate-shake {
+      animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0) scale(0.9); }
+      50% { opacity: 1; transform: translateY(-22px) scale(1.08); }
+      100% { opacity: 0; transform: translateY(-48px) scale(0.95); }
+    }
+    .animate-float-up {
+      animation: floatUp 0.75s ease-out forwards;
+    }
+    .grid-bg {
+      background-size: 32px 32px;
+      background-image: 
+        linear-gradient(to right, rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-amber-500 selection:text-slate-950 overflow-x-hidden">
+
+  <!-- Toast 提示容器 -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- 頂部導覽列 -->
+  <header class="w-full border-b border-slate-800/80 bg-slate-900/80 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
+          <i data-lucide="feather" class="w-5 h-5 text-slate-950"></i>
+        </div>
+        <div class="min-w-0">
+          <h1 class="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2 truncate">
+            正字捕手
+            <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">錯別字遊戲</span>
+          </h1>
+          <p class="text-xs text-slate-400 truncate">辨別左右落下的詞語，點擊或按 ⬅️ ➡️ 選擇「正字」</p>
+        </div>
+      </div>
+
+      <!-- 統計與工具按鈕 -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <div class="hidden sm:flex items-center gap-4 bg-slate-800/70 border border-slate-700/60 rounded-xl px-3.5 py-1.5 text-xs">
+          <div>
+            <span class="text-slate-400 block">最高紀錄</span>
+            <span id="header-best-score" class="font-bold text-amber-400 text-sm">0</span>
+          </div>
+          <div class="h-6 w-px bg-slate-700"></div>
+          <div>
+            <span class="text-slate-400 block">最高連擊</span>
+            <span id="header-best-combo" class="font-bold text-emerald-400 text-sm">0</span>
+          </div>
+        </div>
+
+        <button id="btn-sound" onclick="toggleSound()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 transition" title="切換音效">
+          <i id="icon-sound" data-lucide="volume-2" class="w-4 h-4"></i>
+        </button>
+
+        <button onclick="openDictionaryModal()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-slate-700 text-xs sm:text-sm font-medium transition">
+          <i data-lucide="book-open" class="w-4 h-4 text-amber-400"></i>
+          <span>我的錯題本</span>
+          <span id="mistake-count-badge" class="px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-bold">0</span>
+        </button>
+
+        <button onclick="confirmResetStats()" class="p-2.5 rounded-xl bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 hover:border-rose-700/50 active:scale-95 text-slate-400 border border-slate-700 transition" title="重置歷史紀錄">
+          <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主遊戲區 -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-4 sm:py-6 flex flex-col gap-4">
+    <!-- 遊戲狀態儀表板 -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-400">目前得分</p>
+          <p id="hud-score" class="text-2xl sm:text-3xl font-black text-white mt-0.5">0</p>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+          <i data-lucide="trophy" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-400">連續答對</p>
+          <div class="flex items-baseline gap-1.5 mt-0.5">
+            <p id="hud-combo" class="text-2xl sm:text-3xl font-black text-emerald-400">0</p>
+            <span class="text-xs text-emerald-500/80 font-semibold">COMBO</span>
+          </div>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+          <i data-lucide="flame" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-400">已破題數</p>
+          <div class="flex items-baseline gap-1 mt-0.5">
+            <p id="hud-cleared" class="text-2xl sm:text-3xl font-black text-sky-400">0</p>
+            <span class="text-xs text-slate-500">/ 200</span>
+          </div>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+          <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 sm:p-4 flex items-center justify-between">
+        <div class="min-w-0">
+          <p class="text-xs text-slate-400">落下速度</p>
+          <p id="hud-speed" class="text-lg sm:text-xl font-black text-purple-400 mt-1 truncate">1.0x 正常</p>
+        </div>
+        <button id="btn-pause" onclick="togglePause()" disabled class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:pointer-events-none text-slate-200 border border-slate-700 text-xs font-bold flex items-center gap-1 transition">
+          <i id="icon-pause" data-lucide="pause" class="w-4 h-4"></i>
+          <span id="text-pause">暫停</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 遊戲落下舞台 -->
+    <div id="game-stage" class="relative flex-1 min-h-[430px] sm:min-h-[500px] w-full bg-slate-900/90 border-2 border-slate-800 rounded-3xl overflow-hidden shadow-2xl grid-bg flex flex-col justify-between">
+      
+      <!-- 頂部發射口裝飾 -->
+      <div class="grid grid-cols-2 border-b border-slate-800/80 bg-slate-950/60 z-10">
+        <div class="py-2 px-4 flex items-center justify-center gap-2 border-r border-slate-800/80 text-xs font-semibold text-slate-400">
+          <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+          左軌道（按 ⬅️ 或 A 鍵）
+        </div>
+        <div class="py-2 px-4 flex items-center justify-center gap-2 text-xs font-semibold text-slate-400">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          右軌道（按 ➡️ 或 D 鍵）
+        </div>
+      </div>
+
+      <!-- 中央分隔虛線 -->
+      <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px border-r-2 border-dashed border-slate-800/80 pointer-events-none"></div>
+
+      <!-- 動態浮動加分特效層 -->
+      <div id="effects-layer" class="absolute inset-0 pointer-events-none z-20 overflow-hidden"></div>
+
+      <!-- 落下詞語卡片層 -->
+      <div id="falling-container" class="relative flex-1 w-full overflow-hidden">
+        <!-- 左側落下卡片 -->
+        <div id="card-left" onclick="selectSide('left')" class="hidden absolute left-1/4 -translate-x-1/2 w-[44%] max-w-[260px] cursor-pointer group z-10">
+          <div id="card-left-inner" class="bg-slate-800/95 hover:bg-slate-800 border-2 border-slate-600/80 group-hover:border-amber-400 rounded-2xl p-4 sm:p-6 shadow-xl transition-transform duration-100 active:scale-95 text-center">
+            <span class="inline-block text-[11px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md bg-slate-700/80 text-slate-300 mb-2">左邊詞語</span>
+            <p id="card-left-text" class="serif-font text-2xl sm:text-4xl font-black tracking-wider text-white break-keep"></p>
+          </div>
+        </div>
+
+        <!-- 右側落下卡片 -->
+        <div id="card-right" onclick="selectSide('right')" class="hidden absolute left-3/4 -translate-x-1/2 w-[44%] max-w-[260px] cursor-pointer group z-10">
+          <div id="card-right-inner" class="bg-slate-800/95 hover:bg-slate-800 border-2 border-slate-600/80 group-hover:border-amber-400 rounded-2xl p-4 sm:p-6 shadow-xl transition-transform duration-100 active:scale-95 text-center">
+            <span class="inline-block text-[11px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md bg-slate-700/80 text-slate-300 mb-2">右邊詞語</span>
+            <p id="card-right-text" class="serif-font text-2xl sm:text-4xl font-black tracking-wider text-white break-keep"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 底部警戒線與快速選擇按鈕 -->
+      <div class="relative z-20 bg-slate-950/90 border-t-2 border-rose-500/40">
+        <!-- 警戒提示條 -->
+        <div class="px-4 py-1 bg-rose-950/50 text-rose-300 text-[11px] font-semibold flex items-center justify-center gap-1.5">
+          <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-rose-400"></i>
+          <span>警戒底線：詞語落到底部前請選出「正字」，選錯「錯別字」將立即結束遊戲！</span>
+        </div>
+
+        <!-- 底部左右大型觸控按鈕 -->
+        <div class="grid grid-cols-2 gap-3 p-3">
+          <button id="btn-choose-left" onclick="selectSide('left')" disabled class="py-3 sm:py-3.5 px-4 rounded-2xl bg-slate-800/90 hover:bg-sky-500/20 hover:border-sky-400 active:scale-98 disabled:opacity-40 disabled:pointer-events-none border border-slate-700 text-slate-100 font-bold flex items-center justify-center gap-2 transition shadow-inner">
+            <kbd class="px-2 py-0.5 text-xs rounded bg-slate-900 border border-slate-700 text-sky-400 font-mono">⬅️ / A</kbd>
+            <span>選左邊正字</span>
+          </button>
+          <button id="btn-choose-right" onclick="selectSide('right')" disabled class="py-3 sm:py-3.5 px-4 rounded-2xl bg-slate-800/90 hover:bg-amber-500/20 hover:border-amber-400 active:scale-98 disabled:opacity-40 disabled:pointer-events-none border border-slate-700 text-slate-100 font-bold flex items-center justify-center gap-2 transition shadow-inner">
+            <span>選右邊正字</span>
+            <kbd class="px-2 py-0.5 text-xs rounded bg-slate-900 border border-slate-700 text-amber-400 font-mono">➡️ / D</kbd>
+          </button>
+        </div>
+      </div>
+
+      <!-- 1. 開始畫面遮罩 -->
+      <div id="overlay-start" class="absolute inset-0 z-30 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-6">
+        <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 text-center shadow-2xl">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 mx-auto flex items-center justify-center shadow-lg shadow-amber-500/25 mb-4">
+            <i data-lucide="sparkles" class="w-8 h-8 text-slate-950"></i>
+          </div>
+          <h2 class="serif-font text-2xl sm:text-3xl font-black text-white">正字捕手大挑戰</h2>
+          <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+            每一回合會有一對<span class="text-emerald-400 font-bold">「正字」</span>與<span class="text-rose-400 font-bold">「錯別字」</span>從左右軌道落下。<br/>
+            請在詞語落地前點擊正確的<span class="text-emerald-400 font-bold">「正字」</span>，一旦誤選錯別字或逾時未選即挑戰結束！
+          </p>
+
+          <!-- 難度選擇 -->
+          <div class="mt-6 text-left">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">選擇挑戰難度</label>
+            <div class="grid grid-cols-3 gap-2" id="difficulty-selector">
+              <button type="button" onclick="setDifficulty('easy')" data-diff="easy" class="diff-btn py-2.5 px-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1">
+                <span>書生休閒</span>
+                <span class="text-[11px] font-normal opacity-75">慢速・1倍積分</span>
+              </button>
+              <button type="button" onclick="setDifficulty('normal')" data-diff="normal" class="diff-btn py-2.5 px-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1">
+                <span>翰林標準</span>
+                <span class="text-[11px] font-normal opacity-75">標準・2倍積分</span>
+              </button>
+              <button type="button" onclick="setDifficulty('hard')" data-diff="hard" class="diff-btn py-2.5 px-3 rounded-xl border text-xs font-bold transition flex flex-col items-center gap-1">
+                <span>狀元疾速</span>
+                <span class="text-[11px] font-normal opacity-75">高速・3倍積分</span>
+              </button>
+            </div>
+          </div>
+
+          <button onclick="startGame()" class="mt-6 w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 active:scale-98 text-slate-950 font-black text-base shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 transition">
+            <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+            <span>開始挑戰</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 2. 暫停畫面遮罩 -->
+      <div id="overlay-pause" class="hidden absolute inset-0 z-30 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-6">
+        <div class="max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 text-center shadow-2xl">
+          <div class="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center mb-3">
+            <i data-lucide="pause-circle" class="w-6 h-6"></i>
+          </div>
+          <h3 class="text-xl font-black text-white">遊戲已暫停</h3>
+          <p class="text-xs text-slate-400 mt-1">休息一下，準備好隨時繼續挑戰！</p>
+          <div class="mt-6 flex flex-col gap-2.5">
+            <button onclick="togglePause()" class="w-full py-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm transition">
+              繼續遊戲
+            </button>
+            <button onclick="startGame()" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm border border-slate-700 transition">
+              重新開始本局
+            </button>
+            <button onclick="returnToHome()" class="w-full py-2.5 rounded-xl bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-sm border border-slate-700/80 flex items-center justify-center gap-1.5 transition">
+              <i data-lucide="home" class="w-4 h-4"></i>
+              <span>退回主頁</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 遊戲結束 / 過關結算遮罩 -->
+      <div id="overlay-gameover" class="hidden absolute inset-0 z-30 bg-slate-950/92 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+        <div class="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-7 text-center shadow-2xl my-auto">
+          <div id="gameover-badge-icon" class="w-14 h-14 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 mx-auto flex items-center justify-center mb-3">
+            <i data-lucide="x-octagon" class="w-7 h-7"></i>
+          </div>
+          <h3 id="gameover-title" class="serif-font text-2xl font-black text-white">誤選錯別字，挑戰結束！</h3>
+          <p id="gameover-subtitle" class="text-xs text-slate-400 mt-1">別氣餒，記住這個正字，下次一定能答對</p>
+
+          <!-- 本題正誤對照解析卡 -->
+          <div id="gameover-comparison" class="mt-4 bg-slate-950/90 border border-slate-800 rounded-2xl p-4 text-left">
+            <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center justify-between">
+              <span>本題正誤對照</span>
+              <span class="text-amber-400">已自動加入錯題本</span>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-emerald-950/30 border border-emerald-500/30 rounded-xl p-3 text-center">
+                <span class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 mb-1">
+                  <i data-lucide="check" class="w-3.5 h-3.5"></i> 正字（正確）
+                </span>
+                <p id="gameover-correct-word" class="serif-font text-xl sm:text-2xl font-black text-white tracking-wider"></p>
+              </div>
+              <div class="bg-rose-950/30 border border-rose-500/30 rounded-xl p-3 text-center">
+                <span class="inline-flex items-center gap-1 text-[11px] font-bold text-rose-400 mb-1">
+                  <i data-lucide="x" class="w-3.5 h-3.5"></i> 錯別字（誤用）
+                </span>
+                <p id="gameover-wrong-word" class="serif-font text-xl sm:text-2xl font-black text-slate-300 tracking-wider"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 成績統計 -->
+          <div class="grid grid-cols-3 gap-2.5 mt-4">
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-2.5">
+              <span class="text-[11px] text-slate-400 block">本局得分</span>
+              <span id="gameover-score" class="text-lg font-black text-amber-400">0</span>
+            </div>
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-2.5">
+              <span class="text-[11px] text-slate-400 block">答對題數</span>
+              <span id="gameover-cleared" class="text-lg font-black text-sky-400">0</span>
+            </div>
+            <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-2.5">
+              <span class="text-[11px] text-slate-400 block">最高連擊</span>
+              <span id="gameover-combo" class="text-lg font-black text-emerald-400">0</span>
+            </div>
+          </div>
+
+          <div class="mt-5 flex flex-col sm:flex-row gap-2.5">
+            <button onclick="openDictionaryModal()" class="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm border border-slate-700 flex items-center justify-center gap-1.5 transition">
+              <i data-lucide="book-open" class="w-4 h-4 text-amber-400"></i>
+              <span>查看錯題本</span>
+            </button>
+            <button onclick="returnToHome()" class="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-sm flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/20 transition">
+              <i data-lucide="home" class="w-4 h-4"></i>
+              <span>退回主頁</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- 錯題本 Modal（僅顯示玩家自己的錯題） -->
+  <div id="modal-dictionary" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="max-w-3xl w-full max-h-[85vh] bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-2.5">
+          <i data-lucide="book-marked" class="w-5 h-5 text-amber-400"></i>
+          <h3 class="text-lg font-black text-white">我的錯題本</h3>
+        </div>
+        <button onclick="closeDictionaryModal()" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- 錯題標題說明列 -->
+      <div class="p-4 border-b border-slate-800 bg-slate-950/50 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 text-xs font-bold text-amber-300">
+          <span class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/30">個人錯題紀錄</span>
+          <span class="text-slate-400 font-normal">僅顯示您在遊戲中答錯或逾時的題目</span>
+        </div>
+      </div>
+
+      <!-- List Content -->
+      <div id="dict-list-container" class="flex-1 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5"></div>
+
+      <!-- Modal Footer -->
+      <div class="p-3.5 border-t border-slate-800 bg-slate-950/60 flex items-center justify-between text-xs text-slate-400">
+        <button id="btn-clear-mistakes" onclick="clearMistakes()" class="text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> 清空錯題本
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 完整 200 組常見正字與錯別字對照表（來自 common_typos.xlsx）
+    const TYPO_DATABASE = [
+      {"correct": "摘要", "wrong": "擇要"}, {"correct": "迫不及待", "wrong": "迫不急待"},
+      {"correct": "莫名其妙", "wrong": "莫明其妙"}, {"correct": "一事無成", "wrong": "一是無成"},
+      {"correct": "委曲求全", "wrong": "委屈求全"}, {"correct": "走投無路", "wrong": "走頭無路"},
+      {"correct": "再接再厲", "wrong": "再接再勵"}, {"correct": "渡過難關", "wrong": "度過難關"},
+      {"correct": "度假村", "wrong": "渡假村"}, {"correct": "墨守成規", "wrong": "默守成規"},
+      {"correct": "按部就班", "wrong": "按步就班"}, {"correct": "名列前茅", "wrong": "名列前矛"},
+      {"correct": "抑揚頓挫", "wrong": "抑揚頓措"}, {"correct": "濫竽充數", "wrong": "濫芋充數"},
+      {"correct": "汗流浹背", "wrong": "汗流夾背"}, {"correct": "鬼鬼祟祟", "wrong": "鬼鬼崇崇"},
+      {"correct": "變本加厲", "wrong": "變本加勵"}, {"correct": "精神恍惚", "wrong": "精神恍忽"},
+      {"correct": "滄海一粟", "wrong": "滄海一栗"}, {"correct": "相形見絀", "wrong": "相形見拙"},
+      {"correct": "出其不意", "wrong": "出奇不意"}, {"correct": "出奇制勝", "wrong": "出奇致勝"},
+      {"correct": "別出心裁", "wrong": "別出新裁"}, {"correct": "刻苦耐勞", "wrong": "克苦耐勞"},
+      {"correct": "穩操勝券", "wrong": "穩操勝卷"}, {"correct": "既往不咎", "wrong": "既往不究"},
+      {"correct": "素昧平生", "wrong": "素味平生"}, {"correct": "怦然心動", "wrong": "抨然心動"},
+      {"correct": "抱怨不已", "wrong": "報怨不已"}, {"correct": "披荊斬棘", "wrong": "劈荊斬棘"},
+      {"correct": "孤注一擲", "wrong": "孤註一擲"}, {"correct": "沽名釣譽", "wrong": "估名釣譽"},
+      {"correct": "越俎代庖", "wrong": "越廚代庖"}, {"correct": "一哄而散", "wrong": "一轟而散"},
+      {"correct": "以逸待勞", "wrong": "以逸代勞"}, {"correct": "恬不知恥", "wrong": "括不知恥"},
+      {"correct": "拭目以待", "wrong": "識目以待"}, {"correct": "故步自封", "wrong": "固步自封"},
+      {"correct": "屈指可數", "wrong": "曲指可數"}, {"correct": "互相牴觸", "wrong": "互相抵擉"},
+      {"correct": "實事求是", "wrong": "實事求事"}, {"correct": "如法炮製", "wrong": "如法泡製"},
+      {"correct": "不省人事", "wrong": "不醒人事"}, {"correct": "興致勃勃", "wrong": "興緻勃勃"},
+      {"correct": "迥然不同", "wrong": "迴然不同"}, {"correct": "重新開始", "wrong": "從新開始"},
+      {"correct": "座無虛席", "wrong": "坐無虛席"}, {"correct": "毛骨悚然", "wrong": "毛骨聳然"},
+      {"correct": "言簡意賅", "wrong": "言簡意該"}, {"correct": "東施效顰", "wrong": "東施笑顰"},
+      {"correct": "金榜題名", "wrong": "金榜提名"}, {"correct": "商店打烊", "wrong": "商店打洋"},
+      {"correct": "愛屋及烏", "wrong": "愛屋及屋"}, {"correct": "趨之若鶩", "wrong": "趨之若務"},
+      {"correct": "疾風勁草", "wrong": "急風勁草"}, {"correct": "貿易盈虧", "wrong": "貿易贏虧"},
+      {"correct": "集思廣益", "wrong": "集思廣義"}, {"correct": "耽誤工作", "wrong": "擔誤工作"},
+      {"correct": "胯下之辱", "wrong": "跨下之辱"}, {"correct": "豈有此理", "wrong": "其有此理"},
+      {"correct": "出類拔萃", "wrong": "出類拔粹"}, {"correct": "退避三舍", "wrong": "退避三捨"},
+      {"correct": "提心吊膽", "wrong": "提心弔膽"}, {"correct": "憑弔", "wrong": "憑吊"},
+      {"correct": "一目了然", "wrong": "一目瞭然"}, {"correct": "如此而已", "wrong": "如此而以"},
+      {"correct": "麻木不仁", "wrong": "麻木不人"}, {"correct": "怨天尤人", "wrong": "怨天由人"},
+      {"correct": "尤其", "wrong": "由其"}, {"correct": "比比皆是", "wrong": "彼彼皆是"},
+      {"correct": "華佗再世", "wrong": "華陀再世"}, {"correct": "去世", "wrong": "去逝"},
+      {"correct": "一再交代", "wrong": "一再交待"}, {"correct": "重新考慮", "wrong": "從新考慮"},
+      {"correct": "冒險犯難", "wrong": "冒險患難"}, {"correct": "不甘示弱", "wrong": "不甘勢弱"},
+      {"correct": "天作之合", "wrong": "天作之和"}, {"correct": "環環相扣", "wrong": "環環相叩"},
+      {"correct": "面黃肌瘦", "wrong": "面黃飢瘦"}, {"correct": "至理名言", "wrong": "致理名言"},
+      {"correct": "即使這樣", "wrong": "既使這樣"}, {"correct": "若即若離", "wrong": "若及若離"},
+      {"correct": "投機取巧", "wrong": "偷機取巧"}, {"correct": "滿腹牢騷", "wrong": "滿腹勞騷"},
+      {"correct": "無所事事", "wrong": "無所是事"}, {"correct": "尋人啟事", "wrong": "尋人啟示"},
+      {"correct": "坐享其成", "wrong": "坐想其成"}, {"correct": "併發症", "wrong": "並發症"},
+      {"correct": "經驗老到", "wrong": "經驗老道"}, {"correct": "禮尚往來", "wrong": "禮上往來"},
+      {"correct": "俯首認罪", "wrong": "伏首認罪"}, {"correct": "匪夷所思", "wrong": "非夷所思"},
+      {"correct": "元宵花燈", "wrong": "元霄花燈"}, {"correct": "美輪美奐", "wrong": "美輪美換"},
+      {"correct": "膾炙人口", "wrong": "膾致人口"}, {"correct": "金榜題名", "wrong": "金榜提名"},
+      {"correct": "首屈一指", "wrong": "手屈一指"}, {"correct": "剛愎自用", "wrong": "剛腹自用"},
+      {"correct": "病入膏肓", "wrong": "病入膏盲"}, {"correct": "察言觀色", "wrong": "察顏觀色"},
+      {"correct": "惹事生非", "wrong": "惹是生非"}, {"correct": "大快朵頤", "wrong": "大塊朵頤"},
+      {"correct": "循規蹈矩", "wrong": "循規蹈距"}, {"correct": "川流不息", "wrong": "穿流不息"},
+      {"correct": "不脛而走", "wrong": "不徑而走"}, {"correct": "大放厥詞", "wrong": "大放掘詞"},
+      {"correct": "開誠布公", "wrong": "開誠佈公"}, {"correct": "黃粱一夢", "wrong": "黃梁一夢"},
+      {"correct": "世外桃源", "wrong": "世外桃園"}, {"correct": "粗製濫造", "wrong": "粗製爛造"},
+      {"correct": "草菅人命", "wrong": "草管人命"}, {"correct": "提綱挈領", "wrong": "提綱契領"},
+      {"correct": "同仇敵愾", "wrong": "同仇敵氣"}, {"correct": "心無旁騖", "wrong": "心無旁務"},
+      {"correct": "摩肩接踵", "wrong": "摩肩接腫"}, {"correct": "不屑一顧", "wrong": "不削一顧"},
+      {"correct": "精神煥發", "wrong": "精神渙法"}, {"correct": "神采飛揚", "wrong": "神彩飛揚"},
+      {"correct": "含辛茹苦", "wrong": "含辛如苦"}, {"correct": "垂頭喪氣", "wrong": "垂頭散氣"},
+      {"correct": "如火如荼", "wrong": "如火如茶"}, {"correct": "妄自菲薄", "wrong": "妄自非薄"},
+      {"correct": "瑕不掩瑜", "wrong": "瑕不掩玉"}, {"correct": "蓬蓽生輝", "wrong": "蓬壁生輝"},
+      {"correct": "炙手可熱", "wrong": "至手可熱"}, {"correct": "刻骨銘心", "wrong": "克骨銘心"},
+      {"correct": "嘔心瀝血", "wrong": "嘔心力血"}, {"correct": "相提並論", "wrong": "相題並論"},
+      {"correct": "燥熱", "wrong": "躁熱"}, {"correct": "震撼", "wrong": "震憾"},
+      {"correct": "宣洩", "wrong": "渲洩"}, {"correct": "渲染", "wrong": "宣染"},
+      {"correct": "剽悍", "wrong": "驃悍"}, {"correct": "輻射", "wrong": "幅射"},
+      {"correct": "首屈一指", "wrong": "手屈一指"}, {"correct": "相濡以沫", "wrong": "相濡以抹"},
+      {"correct": "暴躁", "wrong": "暴燥"}, {"correct": "蟄居", "wrong": "哲居"},
+      {"correct": "無微不至", "wrong": "無微不致"}, {"correct": "高瞻遠矚", "wrong": "高瞻遠囑"},
+      {"correct": "暴發戶", "wrong": "爆發戶"}, {"correct": "儀態萬千", "wrong": "怡泰萬千"},
+      {"correct": "耳濡目染", "wrong": "耳儒目染"}, {"correct": "撰寫", "wrong": "譔寫"},
+      {"correct": "暖烘烘", "wrong": "暖哄哄"}, {"correct": "明信片", "wrong": "名信片"},
+      {"correct": "座右銘", "wrong": "坐右銘"}, {"correct": "針砭時弊", "wrong": "針貶時弊"},
+      {"correct": "粗製濫造", "wrong": "粗製爛造"}, {"correct": "不可思議", "wrong": "不可思義"},
+      {"correct": "稗官野史", "wrong": "裨官野史"}, {"correct": "百煉成鋼", "wrong": "百練成鋼"},
+      {"correct": "火山爆發", "wrong": "火山暴發"}, {"correct": "和藹可親", "wrong": "和靄可親"},
+      {"correct": "愛不釋手", "wrong": "愛不失手"}, {"correct": "愛屋及烏", "wrong": "愛烏及屋"},
+      {"correct": "安分守己", "wrong": "安份守己"}, {"correct": "安居樂業", "wrong": "按居樂業"},
+      {"correct": "黯然淚下", "wrong": "暗然淚下"}, {"correct": "按圖索驥", "wrong": "按圖索冀"},
+      {"correct": "嗷嗷待哺", "wrong": "敖敖待哺"}, {"correct": "飛揚跋扈", "wrong": "飛揚拔扈"},
+      {"correct": "絕不罷休", "wrong": "決不罷休"}, {"correct": "白璧微瑕", "wrong": "白壁微瑕"},
+      {"correct": "英雄輩出", "wrong": "英雄倍出"}, {"correct": "半途而廢", "wrong": "半途而費"},
+      {"correct": "唉聲歎氣", "wrong": "哀聲歎氣"}, {"correct": "山洪暴發", "wrong": "山洪爆發"},
+      {"correct": "刻舟求劍", "wrong": "克舟求劍"}, {"correct": "五彩斑斕", "wrong": "五彩斑瀾"},
+      {"correct": "百步穿楊", "wrong": "百步串楊"}, {"correct": "百尺竿頭", "wrong": "百尺桿頭"},
+      {"correct": "罷黜百家", "wrong": "罷绌百家"}, {"correct": "版圖", "wrong": "板圖"},
+      {"correct": "斑駁", "wrong": "斑搏"}, {"correct": "搬弄是非", "wrong": "扳弄是非"},
+      {"correct": "噤若寒蟬", "wrong": "禁若寒蟬"}, {"correct": "瑕不掩瑜", "wrong": "瑕不掩玉"},
+      {"correct": "飽經滄桑", "wrong": "保經滄桑"}, {"correct": "抱負", "wrong": "報負"},
+      {"correct": "暴殄天物", "wrong": "爆殄天物"}, {"correct": "刻不容緩", "wrong": "克不容緩"},
+      {"correct": "穿鑿附會", "wrong": "穿鑿赴會"}, {"correct": "悲慘", "wrong": "卑慘"},
+      {"correct": "背道而馳", "wrong": "倍道而馳"}, {"correct": "本份", "wrong": "本分"},
+      {"correct": "筆名", "wrong": "畢名"}, {"correct": "畢竟", "wrong": "必竟"},
+      {"correct": "滄海桑田", "wrong": "蒼海桑田"}, {"correct": "弊端", "wrong": "避端"},
+      {"correct": "避諱", "wrong": "壁諱"}, {"correct": "鞭笞", "wrong": "鞭苔"},
+      {"correct": "變幻莫測", "wrong": "變換莫測"}, {"correct": "蛛絲馬跡", "wrong": "朱絲馬跡"},
+      {"correct": "辯解", "wrong": "辨解"}, {"correct": "辨別", "wrong": "辯別"},
+      {"correct": "標緻", "wrong": "標致"}, {"correct": "彬彬有禮", "wrong": "斌斌有禮"},
+      {"correct": "瀕臨", "wrong": "頻臨"}, {"correct": "振奮", "wrong": "震奮"}
+    ];
+
+    const STORAGE_KEY = 'typo_catcher_save_v1';
+
+    // 難度參數設定（「翰林標準」與「狀元疾速」的落下速度已再提升 1.2 倍）
+    const DIFFICULTY_CONFIG = {
+      easy: { label: '書生休閒', baseSpeed: 87, maxSpeed: 202.5, speedStep: 2.7, scoreMultiplier: 1 },
+      normal: { label: '翰林標準', baseSpeed: 158.4, maxSpeed: 360, speedStep: 5.4, scoreMultiplier: 2 },
+      hard: { label: '狀元疾速', baseSpeed: 230.4, maxSpeed: 486, speedStep: 8.1, scoreMultiplier: 3 }
+    };
+
+    // 遊戲狀態
+    let state = {
+      status: 'idle', // idle | playing | paused | gameover
+      difficulty: 'normal',
+      score: 0,
+      combo: 0,
+      maxComboThisRun: 0,
+      cleared: 0,
+      deck: [],
+      currentPair: null, // { correct, wrong, correctSide: 'left'|'right' }
+      yPos: -90,
+      lastFrameTime: 0,
+      animFrameId: null,
+      resolvingChoice: false,
+      soundEnabled: true
+    };
+
+    // 持久化存檔資料
+    let saveData = {
+      bestScore: 0,
+      bestCombo: 0,
+      mistakes: [] // [{ correct, wrong, count, lastTime }]
+    };
+
+    // Web Audio API 音效合成器
+    let audioCtx = null;
+    function playSound(type) {
+      if (!state.soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'correct') {
+          osc.type = 'sine';
+          const baseFreq = Math.min(520 + state.combo * 18, 980);
+          osc.frequency.setValueAtTime(baseFreq, now);
+          osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.35, now + 0.14);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+          osc.start(now);
+          osc.stop(now + 0.16);
+        } else if (type === 'wrong') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(190, now);
+          osc.frequency.linearRampToValueAtTime(95, now + 0.35);
+          gain.gain.setValueAtTime(0.22, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+          osc.start(now);
+          osc.stop(now + 0.38);
+        } else if (type === 'victory') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(523.25, now);
+          osc.frequency.setValueAtTime(659.25, now + 0.1);
+          osc.frequency.setValueAtTime(783.99, now + 0.2);
+          osc.frequency.setValueAtTime(1046.5, now + 0.3);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+          osc.start(now);
+          osc.stop(now + 0.55);
+        }
+      } catch (e) {
+        // 忽略瀏覽器音效限制錯誤
+      }
+    }
+
+    // 讀取與保存 localStorage
+    function loadSaveData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            saveData.bestScore = Number(parsed.bestScore) || 0;
+            saveData.bestCombo = Number(parsed.bestCombo) || 0;
+            saveData.mistakes = Array.isArray(parsed.mistakes) ? parsed.mistakes : [];
+          }
+        }
+      } catch (e) {
+        console.warn('讀取紀錄失敗，使用預設值', e);
+      }
+      updateHeaderStats();
+    }
+
+    function persistSaveData() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+      } catch (e) {
+        console.warn('保存紀錄失敗', e);
+      }
+      updateHeaderStats();
+    }
+
+    function updateHeaderStats() {
+      document.getElementById('header-best-score').textContent = saveData.bestScore.toLocaleString();
+      document.getElementById('header-best-combo').textContent = saveData.bestCombo;
+      document.getElementById('mistake-count-badge').textContent = saveData.mistakes.length;
+    }
+
+    // 顯示 Toast 提示
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const colorMap = {
+        info: 'bg-slate-800 border-slate-700 text-slate-100',
+        success: 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200',
+        warning: 'bg-amber-950/90 border-amber-500/40 text-amber-200',
+        error: 'bg-rose-950/90 border-rose-500/40 text-rose-200'
+      };
+      toast.className = `px-4 py-2.5 rounded-xl border shadow-xl text-xs font-bold flex items-center gap-2 transition-all duration-300 ${colorMap[type] || colorMap.info}`;
+      toast.innerHTML = `<span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-8px)';
+        setTimeout(() => toast.remove(), 280);
+      }, 2200);
+    }
+
+    // 標示正字與錯別字差異字元
+    function highlightDiffHtml(word, compareWord, isCorrectWord) {
+      let html = '';
+      for (let i = 0; i < word.length; i++) {
+        const ch = word[i];
+        const otherCh = compareWord[i] || '';
+        if (ch !== otherCh) {
+          if (isCorrectWord) {
+            html += `<span class="text-emerald-400 underline decoration-emerald-400/80 decoration-2 underline-offset-4 px-0.5 rounded bg-emerald-500/15">${ch}</span>`;
+          } else {
+            html += `<span class="text-rose-400 line-through decoration-rose-400 decoration-2 px-0.5 rounded bg-rose-500/15">${ch}</span>`;
+          }
+        } else {
+          html += ch;
+        }
+      }
+      return html;
+    }
+
+    // 切換難度
+    function setDifficulty(diff) {
+      if (!DIFFICULTY_CONFIG[diff]) return;
+      state.difficulty = diff;
+      document.querySelectorAll('.diff-btn').forEach(btn => {
+        const isSelected = btn.getAttribute('data-diff') === diff;
+        if (isSelected) {
+          btn.className = 'diff-btn py-2.5 px-3 rounded-xl border border-amber-400 bg-amber-400/15 text-amber-300 text-xs font-bold transition flex flex-col items-center gap-1 shadow-md shadow-amber-500/10';
+        } else {
+          btn.className = 'diff-btn py-2.5 px-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 text-slate-300 text-xs font-bold transition flex flex-col items-center gap-1';
+        }
+      });
+      updateHud();
+    }
+
+    // 洗牌函數
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    // 退回主頁（回到選擇難度的版面）
+    function returnToHome() {
+      if (state.animFrameId) cancelAnimationFrame(state.animFrameId);
+      state.status = 'idle';
+      state.score = 0;
+      state.combo = 0;
+      state.maxComboThisRun = 0;
+      state.cleared = 0;
+      state.currentPair = null;
+      state.resolvingChoice = false;
+
+      document.getElementById('card-left').classList.add('hidden');
+      document.getElementById('card-right').classList.add('hidden');
+
+      document.getElementById('overlay-pause').classList.add('hidden');
+      document.getElementById('overlay-gameover').classList.add('hidden');
+      document.getElementById('overlay-start').classList.remove('hidden');
+
+      document.getElementById('btn-pause').disabled = true;
+      document.getElementById('text-pause').textContent = '暫停';
+      document.getElementById('btn-choose-left').disabled = true;
+      document.getElementById('btn-choose-right').disabled = true;
+
+      updateHud();
+    }
+
+    // 開始新遊戲
+    function startGame() {
+      if (state.animFrameId) cancelAnimationFrame(state.animFrameId);
+
+      state.status = 'playing';
+      state.score = 0;
+      state.combo = 0;
+      state.maxComboThisRun = 0;
+      state.cleared = 0;
+      state.deck = shuffleArray(TYPO_DATABASE);
+      state.resolvingChoice = false;
+
+      document.getElementById('overlay-start').classList.add('hidden');
+      document.getElementById('overlay-pause').classList.add('hidden');
+      document.getElementById('overlay-gameover').classList.add('hidden');
+
+      document.getElementById('btn-pause').disabled = false;
+      document.getElementById('text-pause').textContent = '暫停';
+      document.getElementById('btn-choose-left').disabled = false;
+      document.getElementById('btn-choose-right').disabled = false;
+
+      updateHud();
+      spawnNextPair();
+
+      state.lastFrameTime = performance.now();
+      state.animFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    // 產生下一對落下詞語
+    function spawnNextPair() {
+      if (state.deck.length === 0) {
+        // 200 題全部通關！
+        triggerGameOver(true, '恭喜通關全部 200 組正字挑戰！');
+        return;
+      }
+
+      const nextItem = state.deck.pop();
+      const correctSide = Math.random() < 0.5 ? 'left' : 'right';
+      state.currentPair = {
+        correct: nextItem.correct,
+        wrong: nextItem.wrong,
+        correctSide
+      };
+
+      state.yPos = -84;
+      state.resolvingChoice = false;
+
+      const leftCard = document.getElementById('card-left');
+      const rightCard = document.getElementById('card-right');
+      const leftInner = document.getElementById('card-left-inner');
+      const rightInner = document.getElementById('card-right-inner');
+
+      leftInner.className = 'bg-slate-800/95 hover:bg-slate-800 border-2 border-slate-600/80 group-hover:border-sky-400 rounded-2xl p-4 sm:p-6 shadow-xl transition-transform duration-100 active:scale-95 text-center';
+      rightInner.className = 'bg-slate-800/95 hover:bg-slate-800 border-2 border-slate-600/80 group-hover:border-amber-400 rounded-2xl p-4 sm:p-6 shadow-xl transition-transform duration-100 active:scale-95 text-center';
+
+      document.getElementById('card-left-text').textContent =
+        correctSide === 'left' ? nextItem.correct : nextItem.wrong;
+      document.getElementById('card-right-text').textContent =
+        correctSide === 'right' ? nextItem.correct : nextItem.wrong;
+
+      leftCard.classList.remove('hidden');
+      rightCard.classList.remove('hidden');
+      renderCardPositions();
+    }
+
+    function getCurrentSpeed() {
+      const cfg = DIFFICULTY_CONFIG[state.difficulty];
+      return Math.min(cfg.baseSpeed + state.cleared * cfg.speedStep, cfg.maxSpeed);
+    }
+
+    function renderCardPositions() {
+      const leftCard = document.getElementById('card-left');
+      const rightCard = document.getElementById('card-right');
+      leftCard.style.transform = `translate(-50%, ${state.yPos}px)`;
+      rightCard.style.transform = `translate(-50%, ${state.yPos}px)`;
+    }
+
+    // 主遊戲迴圈
+    function gameLoop(now) {
+      if (state.status !== 'playing') return;
+
+      const dt = Math.min((now - state.lastFrameTime) / 1000, 0.1);
+      state.lastFrameTime = now;
+
+      if (!state.resolvingChoice && state.currentPair) {
+        const speed = getCurrentSpeed();
+        state.yPos += speed * dt;
+        renderCardPositions();
+
+        const container = document.getElementById('falling-container');
+        const cardEl = document.getElementById('card-left');
+        const maxBottom = container.clientHeight - cardEl.offsetHeight - 6;
+
+        if (state.yPos >= maxBottom) {
+          // 落到底線未選視同挑戰結束
+          playSound('wrong');
+          recordMistake(state.currentPair);
+          triggerGameOver(false, '詞語已落到底部警戒線，未及時選出正字！');
+          return;
+        }
+      }
+
+      state.animFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    // 玩家選擇左邊或右邊
+    function selectSide(side) {
+      if (state.status !== 'playing' || state.resolvingChoice || !state.currentPair) return;
+      state.resolvingChoice = true;
+
+      const isCorrect = side === state.currentPair.correctSide;
+      const chosenInner = document.getElementById(side === 'left' ? 'card-left-inner' : 'card-right-inner');
+
+      if (isCorrect) {
+        playSound('correct');
+        state.combo += 1;
+        if (state.combo > state.maxComboThisRun) state.maxComboThisRun = state.combo;
+        state.cleared += 1;
+
+        const basePoints = 100 + Math.min(state.combo - 1, 20) * 15;
+        const scoreMultiplier = DIFFICULTY_CONFIG[state.difficulty].scoreMultiplier || 1;
+        const points = basePoints * scoreMultiplier;
+        state.score += points;
+
+        if (state.score > saveData.bestScore) saveData.bestScore = state.score;
+        if (state.combo > saveData.bestCombo) saveData.bestCombo = state.combo;
+        persistSaveData();
+
+        chosenInner.className = 'bg-emerald-900/90 border-2 border-emerald-400 rounded-2xl p-4 sm:p-6 shadow-xl shadow-emerald-500/20 scale-105 transition text-center';
+        spawnFloatingEffect(side, `+${points}`, state.combo > 1 ? `${state.combo} 連擊！` : '正字！');
+        updateHud();
+
+        setTimeout(() => {
+          if (state.status === 'playing') {
+            spawnNextPair();
+          }
+        }, 180);
+      } else {
+        // 選錯「錯別字」立即結束遊戲
+        playSound('wrong');
+        chosenInner.className = 'bg-rose-900/90 border-2 border-rose-400 rounded-2xl p-4 sm:p-6 shadow-xl shadow-rose-500/30 text-center';
+        const stage = document.getElementById('game-stage');
+        stage.classList.remove('animate-shake');
+        void stage.offsetWidth;
+        stage.classList.add('animate-shake');
+
+        recordMistake(state.currentPair);
+        setTimeout(() => {
+          triggerGameOver(false, `您誤選了錯別字「${state.currentPair.wrong}」，遊戲結束！`);
+        }, 320);
+      }
+    }
+
+    // 浮動加分特效
+    function spawnFloatingEffect(side, mainText, subText) {
+      const layer = document.getElementById('effects-layer');
+      const el = document.createElement('div');
+      const leftPercent = side === 'left' ? '25%' : '75%';
+      const topPx = Math.max(60, state.yPos + 40);
+      el.style.left = leftPercent;
+      el.style.top = `${topPx}px`;
+      el.className = 'absolute -translate-x-1/2 animate-float-up text-center pointer-events-none';
+      el.innerHTML = `
+        <div class="text-xl sm:text-2xl font-black text-emerald-400 drop-shadow">${mainText}</div>
+        <div class="text-xs font-bold text-amber-300">${subText}</div>
+      `;
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 750);
+    }
+
+    // 更新儀表板
+    function updateHud() {
+      document.getElementById('hud-score').textContent = state.score.toLocaleString();
+      document.getElementById('hud-combo').textContent = state.combo;
+      document.getElementById('hud-cleared').textContent = state.cleared;
+
+      const cfg = DIFFICULTY_CONFIG[state.difficulty];
+      const multiplier = (getCurrentSpeed() / cfg.baseSpeed).toFixed(1);
+      document.getElementById('hud-speed').textContent = `${multiplier}x ${cfg.label}`;
+    }
+
+    // 紀錄錯題至 localStorage
+    function recordMistake(pair) {
+      if (!pair) return;
+      const existing = saveData.mistakes.find(m => m.correct === pair.correct && m.wrong === pair.wrong);
+      if (existing) {
+        existing.count = (existing.count || 1) + 1;
+        existing.lastTime = Date.now();
+      } else {
+        saveData.mistakes.unshift({
+          correct: pair.correct,
+          wrong: pair.wrong,
+          count: 1,
+          lastTime: Date.now()
+        });
+      }
+      persistSaveData();
+    }
+
+    // 觸發遊戲結束畫面
+    function triggerGameOver(isVictory, subtitleText) {
+      state.status = 'gameover';
+      if (state.animFrameId) cancelAnimationFrame(state.animFrameId);
+
+      document.getElementById('btn-pause').disabled = true;
+      document.getElementById('btn-choose-left').disabled = true;
+      document.getElementById('btn-choose-right').disabled = true;
+
+      const badge = document.getElementById('gameover-badge-icon');
+      const title = document.getElementById('gameover-title');
+      const subtitle = document.getElementById('gameover-subtitle');
+      const compBox = document.getElementById('gameover-comparison');
+
+      if (isVictory) {
+        playSound('victory');
+        badge.className = 'w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center mb-3';
+        badge.innerHTML = '<i data-lucide="crown" class="w-7 h-7"></i>';
+        title.textContent = '狀元及第！200 題全數通關';
+        subtitle.textContent = subtitleText;
+        compBox.classList.add('hidden');
+      } else {
+        badge.className = 'w-14 h-14 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 mx-auto flex items-center justify-center mb-3';
+        badge.innerHTML = '<i data-lucide="x-octagon" class="w-7 h-7"></i>';
+        title.textContent = '挑戰結束！';
+        subtitle.textContent = subtitleText;
+        compBox.classList.remove('hidden');
+
+        if (state.currentPair) {
+          document.getElementById('gameover-correct-word').innerHTML =
+            highlightDiffHtml(state.currentPair.correct, state.currentPair.wrong, true);
+          document.getElementById('gameover-wrong-word').innerHTML =
+            highlightDiffHtml(state.currentPair.wrong, state.currentPair.correct, false);
+        }
+      }
+
+      document.getElementById('gameover-score').textContent = state.score.toLocaleString();
+      document.getElementById('gameover-cleared').textContent = `${state.cleared} 題`;
+      document.getElementById('gameover-combo').textContent = state.maxComboThisRun;
+
+      document.getElementById('overlay-gameover').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    // 暫停 / 繼續
+    function togglePause() {
+      if (state.status === 'playing') {
+        state.status = 'paused';
+        if (state.animFrameId) cancelAnimationFrame(state.animFrameId);
+        document.getElementById('overlay-pause').classList.remove('hidden');
+        document.getElementById('text-pause').textContent = '繼續';
+      } else if (state.status === 'paused') {
+        state.status = 'playing';
+        document.getElementById('overlay-pause').classList.add('hidden');
+        document.getElementById('text-pause').textContent = '暫停';
+        state.lastFrameTime = performance.now();
+        state.animFrameId = requestAnimationFrame(gameLoop);
+      }
+    }
+
+    // 音效開關
+    function toggleSound() {
+      state.soundEnabled = !state.soundEnabled;
+      const icon = document.getElementById('icon-sound');
+      icon.setAttribute('data-lucide', state.soundEnabled ? 'volume-2' : 'volume-x');
+      lucide.createIcons();
+      showToast(state.soundEnabled ? '已開啟遊戲音效' : '已切換為靜音模式', 'info');
+    }
+
+    // 開關錯題本 Modal（只顯示玩家的錯題）
+    function openDictionaryModal() {
+      if (state.status === 'playing') {
+        togglePause();
+      }
+      document.getElementById('modal-dictionary').classList.remove('hidden');
+      renderDictionaryList();
+    }
+
+    function closeDictionaryModal() {
+      document.getElementById('modal-dictionary').classList.add('hidden');
+    }
+
+    function renderDictionaryList() {
+      const container = document.getElementById('dict-list-container');
+      const sourceList = saveData.mistakes;
+
+      if (sourceList.length === 0) {
+        container.className = 'flex-1 overflow-y-auto p-8 flex flex-col items-center justify-center text-center';
+        container.innerHTML = `
+          <div class="w-12 h-12 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 mb-3">
+            <i data-lucide="inbox" class="w-6 h-6"></i>
+          </div>
+          <p class="text-sm font-bold text-slate-300">目前沒有任何錯題紀錄！</p>
+          <p class="text-xs text-slate-500 mt-1">在遊戲中誤選或逾時的詞語會自動收錄於此處供您複習。</p>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      container.className = 'flex-1 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 content-start';
+      container.innerHTML = sourceList.map((item) => `
+        <div class="bg-slate-800/60 border border-slate-700/70 rounded-xl p-3 flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">正</span>
+              <span class="serif-font text-base font-black text-white truncate">${highlightDiffHtml(item.correct, item.wrong, true)}</span>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+              <span class="text-[11px] font-bold px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">誤</span>
+              <span class="serif-font text-sm font-bold text-slate-400 truncate">${highlightDiffHtml(item.wrong, item.correct, false)}</span>
+            </div>
+          </div>
+          <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-800 shrink-0">錯 ${item.count || 1} 次</span>
+        </div>
+      `).join('');
+    }
+
+    function clearMistakes() {
+      if (saveData.mistakes.length === 0) {
+        showToast('錯題本目前已經是空的', 'info');
+        return;
+      }
+      saveData.mistakes = [];
+      persistSaveData();
+      renderDictionaryList();
+      showToast('已清空錯題本紀錄', 'success');
+    }
+
+    function confirmResetStats() {
+      if (confirm('確定要重置最高分數、最高連擊與錯題本所有紀錄嗎？')) {
+        saveData = { bestScore: 0, bestCombo: 0, mistakes: [] };
+        persistSaveData();
+        showToast('所有歷史紀錄已重置', 'warning');
+      }
+    }
+
+    // 鍵盤快捷鍵支援（左右方向鍵、A/D、空白鍵暫停）
+    window.addEventListener('keydown', (e) => {
+      if (!document.getElementById('modal-dictionary').classList.contains('hidden')) {
+        if (e.key === 'Escape') closeDictionaryModal();
+        return;
+      }
+      if (state.status === 'playing') {
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+          e.preventDefault();
+          selectSide('left');
+        } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+          e.preventDefault();
+          selectSide('right');
+        } else if (e.key === ' ' || e.key === 'Escape') {
+          e.preventDefault();
+          togglePause();
+        }
+      } else if (state.status === 'paused' && (e.key === ' ' || e.key === 'Escape')) {
+        e.preventDefault();
+        togglePause();
+      }
+    });
+
+    // 初始化
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSaveData();
+      setDifficulty('normal');
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
